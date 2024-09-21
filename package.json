@@ -1,0 +1,18 @@
+{
+  "name": "cubosquare-backend",
+  "version": "1.0.0",
+  "description": "a practice project of creating a bekend for cubosquare",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "javascript",
+    "backend",
+    "express",
+    "mongodb",
+    "mongoose"
+  ],
+  "author": "muntazir sayed",
+  "license": "ISC"
+}
