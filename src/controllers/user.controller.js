@@ -1,10 +1,10 @@
 import { User } from "../models/user.model.js"
-import { asyncHandler } from "../utils/HandleAsync.utils.js"
+import { handleAsync } from "../utils/HandleAsync.utils.js"
 import { ApiError } from "../utils/ApiError.utils.js"
 import { ApiResponse } from "../utils/ApiResponse.utils.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 
-const registerUser = asyncHandler(async (req, res) => {
+const registerUser = handleAsync(async (req, res) => {
     const { fullName, email, username, password, phone } = req.body
 
     if (
@@ -21,11 +21,11 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(409, "User with email or username already exists")
     }
 
-    const profilePictureLocalPath = req.files?.profile_pic[0]?.path;
+    const profilePictureLocalPath = req.file.path;
 
 
     if (!profilePictureLocalPath) {
-        throw new ApiError(400, "Profile picture file is required")
+        throw new ApiError(400, "Profile picture localy file is required")
     }
 
     const profilePicture = await uploadOnCloudinary(profilePictureLocalPath)
@@ -38,15 +38,13 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Phone number is required")
     }
 
-
     const user = await User.create({
         username: username.toLowerCase(),
         fullName,
         email,
         password,
         phone,
-        password,
-        profile_pic: avatar.url,
+        profile_pic: profilePicture.url,
     })
 
     const createdUser = await User.findById(user._id).select(
@@ -62,3 +60,43 @@ const registerUser = asyncHandler(async (req, res) => {
     )
 
 })
+
+const loginUser = handleAsync(async (req, res) => {
+    const { email, username, password } = req.body
+
+    if (!username && !email) {
+        throw new ApiError(400, "username or email is required")
+    }
+
+    const user = await User.findOne({
+        $or: [{ username }, { email }]
+    })
+
+    if (!user) {
+        throw new ApiError(404, "User does not exist")
+    }
+
+    const isPasswordValid = await user.isPasswordCorrect(password)
+    if (!isPasswordValid) {
+        throw new ApiError(401, "Invalid user credentials")
+    }
+
+    const loggedInUser = await User.findById(user._id).select("-password")
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedInUser,
+                },
+                "User logged In Successfully"
+            )
+        )
+})
+
+export {
+    registerUser,
+    loginUser
+}
