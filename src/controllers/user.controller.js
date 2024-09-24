@@ -96,7 +96,113 @@ const loginUser = handleAsync(async (req, res) => {
         )
 })
 
+const updateUserDetails = handleAsync(async (req, res) => {
+    // const { fullName, email, phone, profile_pic } = req.body
+
+    // if (!fullName || !email || !phone && !profile_pic) {
+    //     throw new ApiError(400, "All fields are required")
+    // }
+
+    // if (profile_pic) {
+    //     const profileLocalPath = req.file.path;
+
+    //     if (!profileLocalPath) {
+    //         throw new ApiError(400, "Profile picture is required")
+    //     }
+
+    //     const profilePicture = uploadOnCloudinary(profileLocalPath)
+
+    //     if (!profilePicture.url) {
+    //         throw new ApiError(400, "Failed to upload profile picture")
+    //     }
+    // }
+
+    // const updateData = {
+    //     $unset: {},
+    //     $set: {
+    //         fullName,
+    //         email,
+    //         phone
+    //     }
+    // };
+
+    // // Check if a new profile picture is provided
+    // if (profile_pic) {
+    //     updateData.$unset = { profile_pic: "" }; // Unset previous profile_pic
+    //     updateData.$set.profile_pic = profile_pic; // Set new profile_pic
+    // }
+
+    // const user = await User.findByIdAndUpdate(
+    //     req.params.id,
+    //     updateData,
+    //     { new: true }
+    // ).select("-password"); // Exclude the password field from the result
+
+    // return res
+    //     .status(200)
+    //     .json(new ApiResponse(200, user, "Account details updated sucessfully"))
+
+    // console.log(req.body)
+    const { fullName, email, phone, profile_pic } = req.body
+
+    const updateData = { $set: {} };
+
+    if (fullName) updateData.$set.fullName = fullName;
+    if (email) updateData.$set.email = email;
+    if (phone) updateData.$set.phone = phone;
+
+    if (req.file.path) {
+        const profilePictureLocalPath = req.file.path;
+
+
+        if (!profilePictureLocalPath) {
+            throw new ApiError(400, "Profile picture localy file is required")
+        }
+
+        const profilePicture = await uploadOnCloudinary(profilePictureLocalPath)
+        // console.log(profilePicture)
+        if (!profilePicture) {
+            throw new ApiError(400, "Profile picture file is required")
+        }
+
+        // updateData.$unset.profile_pic = "";
+        updateData.$set.profile_pic = profilePicture.url;
+    }
+
+    // console.log(updateData)
+
+    const user = await User.findByIdAndUpdate(
+        req.params.id,
+        updateData,
+        { new: true }
+    ).select("-password");
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "Account details updated sucessfully"))
+})
+
+const updateUserPassword = handleAsync(async (req, res) => {
+    const { oldPassword, newPassword } = req.body
+
+    const user = await User.findById(req.params.id)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if (!isPasswordCorrect) {
+        throw new ApiError(400, "Invalid old password")
+    }
+
+    user.password = newPassword
+    await user.save({ validateBeforeSave: false })
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "Password changed successfully"))
+})
+
 export {
     registerUser,
-    loginUser
+    loginUser,
+    updateUserDetails,
+    updateUserPassword
 }
