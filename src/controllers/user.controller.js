@@ -3,6 +3,7 @@ import { handleAsync } from "../utils/HandleAsync.utils.js"
 import { ApiError } from "../utils/ApiError.utils.js"
 import { ApiResponse } from "../utils/ApiResponse.utils.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
+import jwt from 'jsonwebtoken'
 
 const generateAccessAndRefereshTokens = async (userId) => {
     try {
@@ -147,6 +148,54 @@ const logoutUser = handleAsync(async (req, res) => {
         .json(new ApiResponse(200, {}, "User logged Out"))
 })
 
+const refreshAccessToken = handleAsync(async (req, res) => {
+    const incomingRefreshToken = req.cookies.refreshToken
+
+    if (!incomingRefreshToken) {
+        throw new ApiError(401, "unauthorized request")
+    }
+
+    try {
+        const decodedToken = jwt.verify(
+            incomingRefreshToken,
+            process.env.REFRESH_TOKEN_SECRET
+        )
+
+        const user = await User.findById(decodedToken._id)
+
+        if (!user) {
+            throw new ApiError(401, "Invalid refresh token")
+        }
+
+        if (incomingRefreshToken !== user.refreshToken) {
+            throw new ApiError(401, "Refresh token is expired or used")
+
+        }
+
+        const options = {
+            httpOnly: true,
+            secure: true
+        }
+
+        const { accessToken, refreshToken: newRefreshToken } = await generateAccessAndRefereshTokens(user._id)
+
+        return res
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", newRefreshToken, options)
+            .json(
+                new ApiResponse(
+                    200,
+                    { accessToken, refreshToken: newRefreshToken },
+                    "Access token refreshed"
+                )
+            )
+    } catch (error) {
+        throw new ApiError(401, error?.message || "Invalid refresh token")
+    }
+
+})
+
 
 const updateUserDetails = handleAsync(async (req, res) => {
     // const { fullName, email, phone, profile_pic } = req.body
@@ -257,5 +306,6 @@ export {
     loginUser,
     updateUserDetails,
     updateUserPassword,
-    logoutUser
+    logoutUser,
+    refreshAccessToken
 }
