@@ -40,8 +40,7 @@ const userSchema = new Schema(
             ref: "Salary"
         },
         role: {
-            type: Schema.Types.ObjectId,
-            ref: "Role"
+            type: String,
         },
         branch: [
             {
@@ -70,8 +69,11 @@ const userSchema = new Schema(
         },
         refreshToken: {
             type: String
+        },
+        createdby: {
+            type: Schema.Types.ObjectId,
+            ref: "User"
         }
-
     },
     {
         timestamps: true
@@ -93,6 +95,10 @@ userSchema.methods.generateAccessToken = function () {
     return jwt.sign(
         {
             _id: this._id,
+            email: this.email,
+            fullName: this.fullName,
+            username: this.username,
+            role: this.role
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
